@@ -13,7 +13,6 @@ echo [*] Detected HWID: %HWID%
 :: DOWNLOAD AUTHORIZED HWID LIST
 :: =====================================================
 echo [*] Fetching authorized HWID list...
-echo [*] Debug: Downloading HWID list...
 curl -v -L "https://raw.githubusercontent.com/zBow2/Loader/master/hwid.txt" -o "%~dp0_hwids.txt"
 
 echo.
@@ -53,7 +52,6 @@ if "%AUTHORIZED%" neq "1" (
 echo [*] HWID authorized!
 timeout /t 1 >nul
 
-
 :: =====================================================
 :: ADMIN CHECK
 :: =====================================================
@@ -63,12 +61,35 @@ net session >nul 2>&1 || (
   exit /b 1
 )
 
-set DRIVE=C:\battle.net
-
+:: =====================================================
+:: ASK USER FOR TARGET PATH
+:: =====================================================
+:ASK_TARGET
+echo.
+echo Enter the full path you want to clean (e.g. C:\path\to\folder):
+set /p "TARGET=Path: "
+if not exist "%TARGET%" (
+    echo [!] Path not found. Please try again.
+    goto ASK_TARGET
+)
+echo [*] Target set to: %TARGET%
 echo.
 echo ============================================
 echo   SYSTEM CLEANUP (NO EVENT LOG CLEARING)
 echo ============================================
+
+:: =====================================================
+:: CLEAN USER‑SELECTED PATH CONTENTS
+:: =====================================================
+echo [*] Cleaning user‑selected path: %TARGET%
+del /f /s /q "%TARGET%\*.tmp" >nul 2>&1
+del /f /s /q "%TARGET%\*.log" >nul 2>&1
+del /f /s /q "%TARGET%\*.cache*" >nul 2>&1
+
+:: Remove any custom cache folders the user may want gone
+if exist "%TARGET%\Cache" rmdir /s /q "%TARGET%\Cache"
+if exist "%TARGET%\Code Cache" rmdir /s /q "%TARGET%\Code Cache"
+if exist "%TARGET%\GPUCache" rmdir /s /q "%TARGET%\GPUCache"
 
 :: =====================================================
 :: OPEN A NEW POWERSHELL WINDOW TO RUN auditpol
@@ -93,9 +114,9 @@ Read-Host"
 timeout /t 3 >nul
 
 :: =====================================================
-:: FILE SYSTEM CLEANUP
+:: FILE SYSTEM CLEANUP (System)
 :: =====================================================
-echo [*] Cleaning file artifacts...
+echo [*] Cleaning system artifacts...
 del /f /s /q "%SystemRoot%\Prefetch\*.pf" >nul 2>&1
 del /f /s /q "%SystemRoot%\Minidump\*.dmp" >nul 2>&1
 del /f /q "%AppData%\Microsoft\Windows\Recent\*" >nul 2>&1
