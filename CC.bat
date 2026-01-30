@@ -11,16 +11,14 @@ echo =====================================
 echo.
 
 :: ===============================
-:: GET HWID (POWERSHELL / CIM)
+:: GET HWID
 :: ===============================
 echo [*] Detecting local HWID...
 
 for /f "usebackq delims=" %%A in (`
   powershell -NoProfile -Command ^
   "try { (Get-CimInstance Win32_ComputerSystemProduct).UUID } catch { '' }"
-`) do (
-  set "HWID=%%A"
-)
+`) do set "HWID=%%A"
 
 if not defined HWID (
   echo [!] HWID detection failed
@@ -29,7 +27,6 @@ if not defined HWID (
 )
 
 echo [*] Detected HWID: %HWID%
-
 
 :: ===============================
 :: ADMIN CHECK
@@ -58,7 +55,10 @@ if not exist "%TARGET%" (
   echo [!] Path not found. Please try again.
   goto ASK_TARGET
 )
+
+set "DRIVE=%TARGET:~0,3%"
 echo [*] Target set to: %TARGET%
+echo [*] Drive detected: %DRIVE%
 
 :: ===============================
 :: FILE CLEANUP
@@ -67,7 +67,6 @@ echo.
 echo =====================================
 echo       FILE CLEANUP
 echo =====================================
-echo [*] Cleaning files in target path...
 del /f /s /q "%TARGET%\*.tmp" "%TARGET%\*.log" "%TARGET%\*.cache*" >nul 2>&1
 for %%D in ("Cache" "Code Cache" "GPUCache") do (
   if exist "%TARGET%\%%~D" rmdir /s /q "%TARGET%\%%~D"
@@ -81,7 +80,6 @@ echo.
 echo =====================================
 echo       SYSTEM CLEANUP
 echo =====================================
-echo [*] Cleaning system artifacts...
 del /f /s /q "%SystemRoot%\Prefetch\*.pf" >nul 2>&1
 del /f /s /q "%SystemRoot%\Minidump\*.dmp" >nul 2>&1
 del /f /q "%AppData%\Microsoft\Windows\Recent\*" >nul 2>&1
@@ -91,15 +89,13 @@ del /f /s /q "%LocalAppData%\Microsoft\Windows\Explorer\thumbcache_*.db" >nul 2>
 echo [✓] System cleanup done
 
 :: ===============================
-:: BROWSER CACHE CLEANUP
+:: BROWSER CACHE CLEANUP (NO KILL)
 :: ===============================
 echo.
 echo =====================================
 echo       BROWSER CACHE
 echo =====================================
-echo [*] Killing browsers...
-taskkill /IM chrome.exe /F >nul 2>&1
-taskkill /IM msedge.exe /F >nul 2>&1
+echo [*] Cleaning browser cache without closing browsers...
 
 set CHROME=%LocalAppData%\Google\Chrome\User Data\Default
 set EDGE=%LocalAppData%\Microsoft\Edge\User Data\Default
@@ -107,12 +103,12 @@ set EDGE=%LocalAppData%\Microsoft\Edge\User Data\Default
 for %%B in ("%CHROME%" "%EDGE%") do (
   for %%C in ("Cache" "Code Cache" "GPUCache") do (
     if exist "%%~B\%%~C" (
-      echo [*] Removing %%~B\%%~C
-      rmdir /s /q "%%~B\%%~C"
+      rmdir /s /q "%%~B\%%~C" >nul 2>&1
     )
   )
 )
-echo [✓] Browser cache cleanup done
+
+echo [✓] Browser cache cleanup done (locked files skipped)
 
 :: ===============================
 :: APPSWITCHED CLEANUP
@@ -122,19 +118,19 @@ echo =====================================
 echo       APPSWITCHED HISTORY
 echo =====================================
 powershell -NoProfile -Command ^
-"Get-ChildItem Registry::HKEY_USERS | Where-Object {$_.PSChildName -match '^S-1-5-21-'} ^
-| ForEach-Object {
-  $k='Registry::HKEY_USERS\'+$_.PSChildName+'\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched'
-  if (Test-Path $k) {
-    Get-ItemProperty $k |
-      ForEach-Object {
-        $_.PSObject.Properties |
-          Where-Object { $_.Value -match 'D:\\' } |
-            ForEach-Object {
-              Remove-ItemProperty -Path $k -Name $_.Name -ErrorAction SilentlyContinue
-            }
-      }
-  }
+"Get-ChildItem Registry::HKEY_USERS | Where-Object {$_.PSChildName -match '^S-1-5-21-'} |
+ ForEach-Object {
+   $k='Registry::HKEY_USERS\'+$_.PSChildName+'\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched'
+   if (Test-Path $k) {
+     Get-ItemProperty $k |
+       ForEach-Object {
+         $_.PSObject.Properties |
+           Where-Object { $_.Value -match '%DRIVE%' } |
+             ForEach-Object {
+               Remove-ItemProperty -Path $k -Name $_.Name -ErrorAction SilentlyContinue
+             }
+       }
+   }
 }" >nul 2>&1
 echo [✓] AppSwitched cleanup done
 
@@ -145,28 +141,43 @@ echo.
 echo =====================================
 echo       MUI CACHE
 echo =====================================
-reg query "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache" /f "%TARGET%" /s 2>nul | (
-  for /f "tokens=*" %%M in ('more') do reg delete "%%M" /f >nul 2>&1
+reg query "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache" /f "%DRIVE%" /s 2>nul | (
+  for /f "delims=" %%M in ('more') do reg delete "%%M" /f >nul 2>&1
 )
 echo [✓] MUI Cache cleanup done
 
 :: ===============================
-:: REGISTRY CLEANUP
+:: REGISTRY CLEANUP (DRIVE-BASED)
 :: ===============================
 echo.
 echo =====================================
 echo       REGISTRY CLEANUP
 echo =====================================
 for %%R in (HKCU HKLM) do (
-  for /f "usebackq tokens=*" %%K in (`reg query %%R /s /f "%TARGET%" 2^>nul`) do (
-    reg delete "%%K" /f >nul 2>&1 || (
-      for /f "tokens=1,* delims= " %%A in ("%%K") do (
-        reg delete "%%A" /v "%%B" /f >nul 2>&1
-      )
-    )
+  for /f "usebackq delims=" %%K in (`
+    reg query %%R /s /f "%DRIVE%" 2^>nul
+  `) do (
+    reg delete "%%K" /f >nul 2>&1
   )
 )
 echo [✓] Registry cleanup done
+
+:: ===============================
+:: BAM / DAM (LAST ACTIVITY)
+:: ===============================
+echo.
+echo =====================================
+echo       BAM / DAM
+echo =====================================
+powershell -NoProfile -Command ^
+"Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services\bam\UserSettings' -ErrorAction SilentlyContinue |
+ ForEach-Object { Remove-Item $_.PsPath -Recurse -Force -ErrorAction SilentlyContinue }"
+
+powershell -NoProfile -Command ^
+"Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services\dam\UserSettings' -ErrorAction SilentlyContinue |
+ ForEach-Object { Remove-Item $_.PsPath -Recurse -Force -ErrorAction SilentlyContinue }"
+
+echo [✓] BAM / DAM cleanup done
 
 :: ===============================
 :: AUDITPOL
@@ -175,12 +186,12 @@ echo.
 echo =====================================
 echo       AUDITPOL
 echo =====================================
-echo [*] Disabling auditing...
 powershell -NoProfile -Command ^
-"auditpol /clear; ^
- auditpol /set /category:'Logon/Logoff' /success:disable /failure:disable; ^
+"auditpol /clear;
+ auditpol /set /category:'Logon/Logoff' /success:disable /failure:disable;
  auditpol /set /category:'Account Logon' /success:disable /failure:disable"
-echo [✓] Auditpol commands executed
+
+echo [✓] Auditpol executed
 
 :: ===============================
 :: FINISH
@@ -197,4 +208,3 @@ pause
 :SELF_DELETE
 (goto) 2>nul & del "%~f0"
 exit /b
-
