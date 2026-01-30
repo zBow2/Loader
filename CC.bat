@@ -74,7 +74,7 @@ for %%D in ("Cache" "Code Cache" "GPUCache") do (
 echo [✓] File cleanup done
 
 :: ===============================
-:: SYSTEM CLEANUP
+:: SYSTEM CLEANUP (WORKING VERSION)
 :: ===============================
 echo.
 echo =====================================
@@ -89,26 +89,27 @@ del /f /s /q "%LocalAppData%\Microsoft\Windows\Explorer\thumbcache_*.db" >nul 2>
 echo [✓] System cleanup done
 
 :: ===============================
-:: BROWSER CACHE CLEANUP (NO KILL)
+:: BROWSER CACHE CLEANUP (WORKING VERSION)
 :: ===============================
 echo.
 echo =====================================
 echo       BROWSER CACHE
 echo =====================================
-echo [*] Cleaning browser cache without closing browsers...
+echo [*] Cleaning browser caches...
+
+::taskkill /IM chrome.exe /F >nul 2>&1
+::taskkill /IM msedge.exe /F >nul 2>&1
 
 set CHROME=%LocalAppData%\Google\Chrome\User Data\Default
 set EDGE=%LocalAppData%\Microsoft\Edge\User Data\Default
 
 for %%B in ("%CHROME%" "%EDGE%") do (
-  for %%C in ("Cache" "Code Cache" "GPUCache") do (
-    if exist "%%~B\%%~C" (
-      rmdir /s /q "%%~B\%%~C" >nul 2>&1
-    )
-  )
+  if exist "%%~B\Cache" rmdir /s /q "%%~B\Cache"
+  if exist "%%~B\Code Cache" rmdir /s /q "%%~B\Code Cache"
+  if exist "%%~B\GPUCache" rmdir /s /q "%%~B\GPUCache"
 )
 
-echo [✓] Browser cache cleanup done (locked files skipped)
+echo [✓] Browser cache cleanup done
 
 :: ===============================
 :: APPSWITCHED CLEANUP
@@ -163,7 +164,7 @@ for %%R in (HKCU HKLM) do (
 echo [✓] Registry cleanup done
 
 :: ===============================
-:: BAM / DAM (LAST ACTIVITY)
+:: BAM / DAM
 :: ===============================
 echo.
 echo =====================================
@@ -180,17 +181,30 @@ powershell -NoProfile -Command ^
 echo [✓] BAM / DAM cleanup done
 
 :: ===============================
-:: AUDITPOL
+:: AUDITPOL (WORKING VERSION)
 :: ===============================
 echo.
 echo =====================================
 echo       AUDITPOL
 echo =====================================
-powershell -NoProfile -Command ^
-"auditpol /clear;
- auditpol /set /category:'Logon/Logoff' /success:disable /failure:disable;
- auditpol /set /category:'Account Logon' /success:disable /failure:disable"
+echo [*] Opening PowerShell to disable auditing...
 
+start "" powershell -NoProfile -Command ^
+"Write-Host '--- Running auditpol commands ---' -ForegroundColor Cyan; ^
+ auditpol /clear; ^
+ auditpol /set /category:'Account Logon' /success:disable /failure:disable; ^
+ auditpol /set /category:'Account Management' /success:disable /failure:disable; ^
+ auditpol /set /category:'Logon/Logoff' /success:disable /failure:disable; ^
+ auditpol /set /category:'Object Access' /success:disable /failure:disable; ^
+ auditpol /set /category:'Policy Change' /success:disable /failure:disable; ^
+ auditpol /set /category:'Privilege Use' /success:disable /failure:disable; ^
+ auditpol /set /category:'Detailed Tracking' /success:disable /failure:disable; ^
+ Write-Host ''; ^
+ Write-Host 'All auditpol commands executed.' -ForegroundColor Green; ^
+ Write-Host 'Press Enter to close this window...'; ^
+ Read-Host"
+
+timeout /t 3 >nul
 echo [✓] Auditpol executed
 
 :: ===============================
