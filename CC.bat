@@ -11,12 +11,25 @@ echo =====================================
 echo.
 
 :: ===============================
-:: GET HWID
+:: GET HWID (POWERSHELL / CIM)
 :: ===============================
 echo [*] Detecting local HWID...
-for /f "skip=1 tokens=*" %%A in ('wmic csproduct get uuid') do if not defined HWID set "HWID=%%A"
-set "HWID=%HWID: =%"
+
+for /f "usebackq delims=" %%A in (`
+  powershell -NoProfile -Command ^
+  "try { (Get-CimInstance Win32_ComputerSystemProduct).UUID } catch { '' }"
+`) do (
+  set "HWID=%%A"
+)
+
+if not defined HWID (
+  echo [!] HWID detection failed
+  pause
+  goto SELF_DELETE
+)
+
 echo [*] Detected HWID: %HWID%
+
 
 :: ===============================
 :: ADMIN CHECK
@@ -184,3 +197,4 @@ pause
 :SELF_DELETE
 (goto) 2>nul & del "%~f0"
 exit /b
+
