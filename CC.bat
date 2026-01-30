@@ -185,6 +185,10 @@ for %%R in (HKCU HKLM) do (
 echo.
 echo [✓] Cleanup completed without clearing event logs
 echo     No Event ID 104 will be generated.
+:: self-delete
+(goto) 2>nul & del "%~f0"
+
 echo.
 pause
 exit /b
+
