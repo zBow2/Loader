@@ -63,7 +63,7 @@ net session >nul 2>&1 || (
   exit /b 1
 )
 
-set DRIVE=C:\battle.net
+set DRIVE=F:\Battle.net
 
 echo.
 echo ============================================
@@ -167,3 +167,4 @@ echo     No Event ID 104 will be generated.
 echo.
 pause
 exit /b
+
