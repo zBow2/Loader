@@ -67,30 +67,13 @@ set DRIVE=F:\Battle.net
 
 echo.
 echo ============================================
-echo   SYSTEM CLEANUP (NO EVENT LOG CLEARING)
+echo   DRIVE TRACE CLEANUP FOR %DRIVE%
 echo ============================================
 
 :: =====================================================
-:: OPEN A NEW POWERSHELL WINDOW TO RUN auditpol
+:: START CLEANUP TASKS
 :: =====================================================
-echo [*] Opening PowerShell to disable auditing...
-
-start "" powershell -NoProfile -Command ^
-"Write-Host '--- Running auditpol commands ---' -ForegroundColor Cyan; ^
-auditpol /clear; ^
-auditpol /set /category:'Account Logon' /success:disable /failure:disable; ^
-auditpol /set /category:'Account Management' /success:disable /failure:disable; ^
-auditpol /set /category:'Logon/Logoff' /success:disable /failure:disable; ^
-auditpol /set /category:'Object Access' /success:disable /failure:disable; ^
-auditpol /set /category:'Policy Change' /success:disable /failure:disable; ^
-auditpol /set /category:'Privilege Use' /success:disable /failure:disable; ^
-auditpol /set /category:'Detailed Tracking' /success:disable /failure:disable; ^
-Write-Host ''; ^
-Write-Host 'All auditpol commands executed.' -ForegroundColor Green; ^
-Write-Host 'Press Enter to close this window...'; ^
-Read-Host"
-
-timeout /t 3 >nul
+echo [*] Starting cleanup tasks...
 
 :: =====================================================
 :: FILE SYSTEM CLEANUP
@@ -104,19 +87,25 @@ del /f /q "%AppData%\Microsoft\Windows\Recent\CustomDestinations\*" >nul 2>&1
 del /f /s /q "%LocalAppData%\Microsoft\Windows\Explorer\thumbcache_*.db" >nul 2>&1
 
 :: =====================================================
-:: BROWSER CACHE CLEANUP
+:: REGISTRY CLEANUP (REMOVING DRIVE REFERENCES)
 :: =====================================================
-echo [*] Cleaning browser caches
-taskkill /IM chrome.exe /F >nul 2>&1
-taskkill /IM msedge.exe /F >nul 2>&1
+echo [*] Removing registry references to %DRIVE%
+for %%R in (HKCU HKLM) do (
+  for /f "usebackq tokens=*" %%K in (`reg query %%R /s /f "%DRIVE%" 2^>nul`) do (
+    reg delete "%%K" /f >nul 2>&1 || (
+      for /f "tokens=1,* delims= " %%A in ("%%K") do (
+        reg delete "%%A" /v "%%B" /f >nul 2>&1
+      )
+    )
+  )
+)
 
-set CHROME=%LocalAppData%\Google\Chrome\User Data\Default
-set EDGE=%LocalAppData%\Microsoft\Edge\User Data\Default
-
-for %%B in ("%CHROME%" "%EDGE%") do (
-  if exist "%%~B\Cache" rmdir /s /q "%%~B\Cache"
-  if exist "%%~B\Code Cache" rmdir /s /q "%%~B\Code Cache"
-  if exist "%%~B\GPUCache" rmdir /s /q "%%~B\GPUCache"
+:: =====================================================
+:: MUI CACHE CLEAN (PROGRAM EXECUTION HISTORY)
+:: =====================================================
+echo [*] Cleaning MuiCache
+reg query "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache" /f "%DRIVE%" /s 2>nul | (
+  for /f "tokens=*" %%M in ('more') do reg delete "%%M" /f >nul 2>&1
 )
 
 :: =====================================================
@@ -127,7 +116,7 @@ powershell -NoProfile -Command ^
 "Get-ChildItem Registry::HKEY_USERS | Where-Object {$_.PSChildName -match '^S-1-5-21-'} ^
 | ForEach-Object {
   $k='Registry::HKEY_USERS\'+$_.PSChildName+'\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched'
-  if (Test-Path $k) {
+  if(Test-Path $k){
     Get-ItemProperty $k |
       ForEach-Object {
         $_.PSObject.Properties |
@@ -140,30 +129,34 @@ powershell -NoProfile -Command ^
 }" >nul 2>&1
 
 :: =====================================================
-:: MUI CACHE CLEAN
+:: SEARCH INDEX RESET
 :: =====================================================
-echo [*] Cleaning MuiCache
-reg query "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache" /f "%TARGET%" /s 2>nul | (
-  for /f "tokens=*" %%M in ('more') do reg delete "%%M" /f >nul 2>&1
+echo [*] Resetting Windows Search Index
+net stop WSearch >nul 2>&1
+rmdir /s /q "%ProgramData%\Microsoft\Search\Data\Applications\Windows" >nul 2>&1
+net start WSearch >nul 2>&1
+
+:: =====================================================
+:: BROWSER CACHE CLEANUP
+:: =====================================================
+echo [*] Cleaning browser caches
+
+
+set CHROME=%LocalAppData%\Google\Chrome\User Data\Default
+set EDGE=%LocalAppData%\Microsoft\Edge\User Data\Default
+
+for %%B in ("%CHROME%" "%EDGE%") do (
+  if exist "%%~B\Cache" rmdir /s /q "%%~B\Cache"
+  if exist "%%~B\Code Cache" rmdir /s /q "%%~B\Code Cache"
+  if exist "%%~B\GPUCache" rmdir /s /q "%%~B\GPUCache"
 )
 
 :: =====================================================
-:: REGISTRY CLEANUP
+:: CLEANUP DONE
 :: =====================================================
-echo [*] Removing registry references to %TARGET%
-for %%R in (HKCU HKLM) do (
-  for /f "usebackq tokens=*" %%K in (`reg query %%R /s /f "%TARGET%" 2^>nul`) do (
-    reg delete "%%K" /f >nul 2>&1 || (
-      for /f "tokens=1,* delims= " %%A in ("%%K") do (
-        reg delete "%%A" /v "%%B" /f >nul 2>&1
-      )
-    )
-  )
-)
-
 echo.
-echo [✓] Cleanup completed without clearing event logs
-echo     No Event ID 104 will be generated.
+echo [✓] ALL TRACES REFERENCING %DRIVE% REMOVED
+echo     Reboot recommended.
 echo.
 pause
 exit /b
