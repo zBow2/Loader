@@ -1,8 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
-set "U1=https://raw.githubusercontent.com/"
-set "U2=zBow2/Loader/"
-set "U3=master/hwid.txt"
+
 :: =====================================================
 :: GET LOCAL MACHINE HWID (UUID)
 :: =====================================================
@@ -16,13 +14,11 @@ echo [*] Detected HWID: %HWID%
 :: =====================================================
 echo [*] Fetching authorized HWID list...
 echo [*] Debug: Downloading HWID list...
-
-
-curl -L "%U1%%U2%%U3%" -o "%TEMP%\_hwids.txt"
+curl -v -L "https://raw.githubusercontent.com/zBow2/Loader/master/hwid.txt" -o "%~dp0_hwids.txt"
 
 echo.
 echo ======= HWID LIST FETCHED =======
-type "%TEMP%\_hwids.txt"
+type "%~dp0_hwids.txt"
 echo ======= END OF FILE CONTENT =======
 pause
 
