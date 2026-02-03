@@ -97,7 +97,7 @@ reg query "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell
 echo [*] Cleaning AppSwitched history
 powershell -NoProfile -Command ^
 "Get-ChildItem Registry::HKEY_USERS | Where-Object {$_.PSChildName -match '^S-1-5-21-'} ^
- ForEach-Object {
+ |ForEach-Object {
   $k='Registry::HKEY_USERS\'+$_.PSChildName+'\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched'
   if(Test-Path $k){
     Get-ItemProperty $k |
@@ -166,6 +166,7 @@ echo     Reboot recommended
 echo.
 pause
 exit /b
+
 
 
 
