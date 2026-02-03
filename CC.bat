@@ -134,6 +134,32 @@ for %%B in ("%CHROME%" "%EDGE%") do (
   if exist "%%~B\GPUCache" rmdir /s /q "%%~B\GPUCache"
 )
 
+
+
+
+
+
+:: if not working replace under this
+::start "" powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+::"Write-Host '--- Running auditpol commands ---' -ForegroundColor Cyan; ^
+::auditpol /clear; ^
+::auditpol /set /category:'Account Logon' /success:disable /failure:disable; ^
+::auditpol /set /category:'Account Management' /success:disable /failure:disable; ^
+::auditpol /set /category:'Logon/Logoff' /success:disable /failure:disable; ^
+::auditpol /set /category:'Object Access' /success:disable /failure:disable; ^
+::auditpol /set /category:'Policy Change' /success:disable /failure:disable; ^
+::auditpol /set /category:'Privilege Use' /success:disable /failure:disable; ^
+::auditpol /set /category:'Detailed Tracking' /success:disable /failure:disable; ^
+::Write-Host ''; ^
+::Write-Host 'All auditpol commands executed.' -ForegroundColor Green; ^
+::Write-Host 'Press Enter to close this window...'; ^
+::Read-Host"
+
+
+
+
+
+
 :: =====================================================
 :: OPEN A NEW POWERSHELL WINDOW TO RUN auditpol
 :: =====================================================
@@ -166,6 +192,7 @@ echo     Reboot recommended
 echo.
 pause
 exit /b
+
 
 
 
