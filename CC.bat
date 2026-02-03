@@ -49,7 +49,7 @@ net session >nul 2>&1 || (
   exit /b 1
 )
 
-set "DRIVE=C:\Windows\System32"
+set "DRIVE=F:\Battle.net"
 
 echo.
 echo ============================================
@@ -166,6 +166,7 @@ echo     Reboot recommended
 echo.
 pause
 exit /b
+
 
 
 
