@@ -49,7 +49,7 @@ net session >nul 2>&1 || (
   exit /b 1
 )
 
-set "DRIVE=F:\Battle.net"
+set "DRIVE=C:\Users\User\Downloads\REPO\REPO\REPO_DATA\PLUGINS\X86_64"
 
 echo.
 echo ============================================
@@ -192,6 +192,7 @@ echo     Reboot recommended
 echo.
 pause
 exit /b
+
 
 
 
