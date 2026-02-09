@@ -70,21 +70,6 @@ del /f /q "%AppData%\Microsoft\Windows\Recent\CustomDestinations\*" >nul 2>&1
 del /f /s /q "%LocalAppData%\Microsoft\Windows\Explorer\thumbcache_*.db" >nul 2>&1
 
 :: =====================================================
-:: REGISTRY CLEANUP (DRIVE REFERENCES ONLY)
-:: =====================================================
-echo [*] Removing registry references to %DRIVE%
-for %%R in (HKCU HKLM) do (
-  for /f "usebackq tokens=*" %%K in (`reg query %%R /s /f "%DRIVE%" 2^>nul`) do (
-    reg delete "%%K" /f >nul 2>&1 || (
-      for /f "tokens=1,* delims= " %%A in ("%%K") do (
-        reg delete "%%A" /v "%%B" /f >nul 2>&1
-      )
-    )
-  )
-)
-
-
-:: =====================================================
 :: OPEN A NEW POWERSHELL WINDOW TO RUN auditpol
 :: =====================================================
 echo [*] Opening PowerShell to disable auditing...
@@ -105,6 +90,21 @@ Write-Host 'Press Enter to close this window...'; ^
 Read-Host"
 
 timeout /t 3 >nul
+:: =====================================================
+:: REGISTRY CLEANUP (DRIVE REFERENCES ONLY)
+:: =====================================================
+echo [*] Removing registry references to %DRIVE%
+for %%R in (HKCU HKLM) do (
+  for /f "usebackq tokens=*" %%K in (`reg query %%R /s /f "%DRIVE%" 2^>nul`) do (
+    reg delete "%%K" /f >nul 2>&1 || (
+      for /f "tokens=1,* delims= " %%A in ("%%K") do (
+        reg delete "%%A" /v "%%B" /f >nul 2>&1
+      )
+    )
+  )
+)
+
+
 :: =====================================================
 :: MUI CACHE CLEAN
 :: =====================================================
@@ -214,6 +214,7 @@ echo     Reboot recommended
 echo.
 pause
 exit /b
+
 
 
 
