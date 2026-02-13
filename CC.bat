@@ -49,7 +49,7 @@ net session >nul 2>&1 || (
   exit /b 1
 )
 
-set "DRIVE=C:\Users\User\Desktop"
+set "DRIVE=C:\Users\User\Download"
 
 echo.
 echo ============================================
@@ -214,6 +214,7 @@ echo     Reboot recommended
 echo.
 pause
 exit /b
+
 
 
 
